@@ -9,7 +9,7 @@
     ...
   }: {
     nixosModules = {
-      default = import ./modules/hemlis.nix;
+      hemlis = import ./modules/hemlis.nix;
     };
   };
 }

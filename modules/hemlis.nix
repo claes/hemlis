@@ -6,7 +6,7 @@
 }: let
   inherit (lib) concatStringsSep mkOption types;
 
-  cfg = config.secretsmanager;
+  cfg = config.hemlis;
 
   installSecretCmd = entries:
     concatStringsSep "\n" (map (
@@ -38,7 +38,7 @@
       ''
     ) (builtins.attrValues entries));
 
-  installSecrets = pkgs.writeShellScriptBin "install-secrets.sh" (
+  installSecrets = pkgs.writeShellScriptBin "hemlis-install" (
     let
       installSecretStatements = installSecretCmd cfg.secrets;
       secretsDir = cfg.secretsDir.path;
@@ -92,7 +92,7 @@
   in
     unique;
 in {
-  options.secretsmanager = {
+  options.hemlis = {
     secretsDir = mkOption {
       type = types.submodule {
         options = {

@@ -2,7 +2,7 @@
 
 Hemlis is a NixOS module to help you install secrets to your NixOS system.
 
-It is not a turn-key solution, but a tool to copy secrets to designated locations, and reference them from Nix in a unified way
+It is not a turn-key solution, but a tool to copy secrets to designated locations, and reference them from Nix in a unified way. You use it together with your already established secrets management practises. For example, you can combine it with your password manager.
 
 Popular Nix secrets solutions such as agenix and sopsnix requires you to manage your secrets using their designated file formats and encryption methods. They then store the secrets in the nix store in encrypted form, and decrypts them at the activation step.
 

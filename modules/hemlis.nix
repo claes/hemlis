@@ -11,14 +11,14 @@
   installSecretCmd = entries:
     concatStringsSep "\n" (map (
       entry: let
-        shellExpr = entry.shellExpr;
+        template = entry.template;
         file = entry.file;
         mode = entry.mode or "400";
         owner = entry.owner or "root";
         group = entry.group or "root";
         skipIfExists = entry.skipIfExists or false;
 
-        envVars = extractEnvVars shellExpr;
+        vars = extractVars template;
 
         checks = concatStringsSep " && " (
           (
@@ -26,14 +26,14 @@
             then [''[[ ! -f "$SECRETS_DIR/${file}" ]]'']
             else []
           )
-          ++ (map (v: ''[[ -n "${v}" ]]'') envVars)
+          ++ (map (v: ''[[ -n "${v}" ]]'') vars)
         );
       in ''
         ${checks} && install -m ${mode} \
           --owner="$(if getent passwd ${owner} > /dev/null; then echo ${owner}; else echo root; fi)" \
           --group="$(if getent group ${group} > /dev/null; then echo ${group}; else echo root; fi)" \
         /dev/stdin "$SECRETS_DIR/${file}" <<EOF
-        ${shellExpr}
+        ${template}
         EOF
       ''
     ) (builtins.attrValues entries));
@@ -68,7 +68,7 @@
     ''
   );
 
-  extractEnvVars = str: let
+  extractVars = str: let
     # 1. Split and keep capture groups.
     rawParts = lib.split ''(\$[A-Za-z_][A-Za-z0-9_]*)'' str;
 
@@ -129,9 +129,9 @@ in {
         ...
       }: {
         options = {
-          shellExpr = mkOption {
+          template = mkOption {
             type = types.str;
-            description = "Name of the environment variable holding the secret.";
+            description = "Template for the secret file. Should reference variables like \$secret for values to be replaced with actual secret value.";
           };
           file = mkOption {
             type = types.str;
@@ -161,7 +161,7 @@ in {
               "''${cfg.secretsDir.path}/''${config.file}"
             '';
             description = ''
-              Path where the secret is installed. (Read-only)
+              Path where the secret is installed.
             '';
           };
         };

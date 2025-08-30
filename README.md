@@ -28,7 +28,7 @@ It is the Pa$sw0rd which is the secret. The other part is just a boilerplate, wh
 To configure this using Hemlis, you define a secret hemlis.secrets.home_wifi like:
 
     hemlis.secrets.home_wifi = {
-      shellExpr = ''HOME_WIFI_PASSWORD=$home_wifi_password'';
+      template = ''HOME_WIFI_PASSWORD=$home_wifi_password'';
     };
 
 As you can see, Pa$sw0rd is here replaced with $home_wifi_password. How this will work is explained later. 
@@ -47,7 +47,7 @@ Nix will resolve config.hemlis.secrets.home_wifi.path to a string, such as "/per
 
 This part is actually quite similar to for example agenix. But it differs how the secrets are defined:
 
-The contents of the file is defined by the value of shellExpr in the home_wifi attribute set value. This is a kind of template, where the part that looks like shell variable syntax will be replaced with the actual secret, by hemlis. 
+The contents of the file is defined by the value of template in the home_wifi attribute set value. This is a kind of template, where the part that looks like shell variable syntax will be replaced with the actual secret, by hemlis. 
 
 If the $home_wifi_password is defined to be Pa$sw0rd, then the result will be that the file contents will be 
 
@@ -72,7 +72,7 @@ If you would then execute
     source secrets.txt
     hemlis-install
 
-hemlis-install will match the home_wifi_password variable with the $home_wifi_password expression given in the shellExpr Nix option. The result will be a file containing HOME_WIFI_PASSWORD=Pa$sw0rd which config.hemlis.secrets.home_wifi.path will be referencing.
+hemlis-install will match the home_wifi_password variable with the $home_wifi_password expression given in the template Nix option. The result will be a file containing HOME_WIFI_PASSWORD=Pa$sw0rd which config.hemlis.secrets.home_wifi.path will be referencing.
 
 This works, but since the secrets are now present in your environment as environment variables, it is very insecure. It is also a bad practise to store secrets in plain text files - but this was just for illustration. 
 
@@ -114,7 +114,7 @@ You can adapt this approach to fit you. If you don't use pass password managemen
 Hemlis supports owner, group and mode configuration. Example: 
 
     hemlis.secrets.mpd_readonly_password = {
-        shellExpr = "$mpd_readonly";
+        template = "$mpd_readonly";
         owner = "mpd";
         group = "mpd";
         mode = "440";
@@ -151,7 +151,5 @@ Hemlis does not apply any encryption itself. Since it is not a complete solution
 Used well, it can definitely be secure.
 
 - Make sure you encrypt the secrets in their master location.
-- Don't use environment variables to propagate them between proceses
-- Use pipes and not files for inter-process communication. 
-
-This way I belive it can be as secure as the alternatives.
+- Don't use environment variables to propagate them between processes
+- Use pipes for inter-process communication, do not use intermediate files. 

@@ -6,7 +6,7 @@ It is not a turn-key solution, but a tool to copy secrets to designated location
 
 Popular Nix secrets solutions such as agenix and sopsnix requires you to manage your secrets using their designated file formats and encryption methods. They then store the secrets in the nix store in encrypted form, and decrypts them at the activation step.
 
-Hemlis leaves the secrets management part up to you - where you store them, how you encrypt them - but helps you to copy them to the final location, and to reference them using Nix. You may find this a simpler approach, especially when you are new to Nix. The intent with this approach is that it should be simple to understand and adapt. 
+Hemlis leaves the secrets management part up to you - where you keep them, how you encrypt them - but helps you to copy them to the final location, and to reference them using Nix. You may find this a simpler approach, especially when you are new to Nix. The intent with this approach is that it should be simple to understand and adapt. 
 
 # Example
 
@@ -65,18 +65,20 @@ If you would then execute
     source secrets.txt
     hemlis-install
 
-It will install them. This works, but since the secrets are now present in your environment, it is not very secure. 
+It will install them. This works, but since the secrets are now present in your environment, it is not very secure. It is also a bad practise to store secrets in a plain text file - but this is just for illustration. 
 
 Another way would be to create a script call secrets.sh containing
 
     #!/usr/bin/env bash
     home_wifi_password="Pa$sw0rd"
 
-    source $(readlink -f hemlis-install)
+    source $(type hemlis-install)
 
-If you then execute secrets.sh, the secrets will be installed. In this case, the shell variable is defined within the shell process, and would not leak to the environment. It is however an ugly practise mix the definition of secrets with program code, and the secret would not be encrypted at rest.
+If you then execute secrets.sh, the secrets will be installed. In this case, the shell variable is defined within the shell process, and would not leak to the environment. It is however an ugly practise mix the definition of secrets with program code, and also here the secret would not be encrypted at rest.
 
-A good practise is instead as follows. Deine the secrets using a password management tool. For example, using the pass password manager (https://www.passwordstore.org/), you store the secret nixos-secrets with contents as  
+A good practise is instead as follows:
+
+Define the secrets using a password management tool. For example, using the pass password manager (https://www.passwordstore.org), you store the secret nixos-secrets with contents as  
 
     home_wifi_password="Pa$sw0rd"
 
@@ -90,6 +92,8 @@ To deploy the secrets remotely, you can modfiy the command to run the installati
 
     (set -e; pass nixos-secrets && echo "source $(type hemlis-install)") | ssh remote-host sudo bash -s
 
+You can adapt this approach to fit you. If you don't use pass password management tool, you can use encryption tools such as gpg or age, or explore ways to use another password manager. Create a way to decrypt your secrets from rest, format them in the shell variable syntax, and combine them with hemlis-install. 
+
 ## FAQ
 
 ### How do I control what permissions my secret files are installed with?
@@ -102,6 +106,12 @@ Hemlis supports owner, group and mode configuration. Example:
         group = "mpd";
         mode = "440";
     };
+
+### How do I set where my secrets are installed
+
+You can set the secretsDir path as follows
+    
+    hemlis.secretsDir.path = "/my-secrets-dir";
 
 ### What are the disadvantages with this approach compared with example agenix?
 
@@ -117,3 +127,12 @@ You can either just install the secrets, and restart the dependent services. Or 
     nix build ".#nixosConfigurations.hostname.config.system.build.toplevel" --out-link "$result_link"
     system_path=$(readlink -f "$result_link")
     (set -e; pass nixos-secrets && echo "source $($system_path//sw/bin/hemlis-install)") | sudo bash -s
+
+
+### Is hemlis secure?
+
+Hemlis is at its core just a way to copy data to files in locations as specified with Nix. It does not apply any encryption itself. Since it is not a complete solution, it can be used in secure or insecure ways.
+
+Used well, it can definitely be secure 
+
+Make sure you encrypt the secrets in their master location, don't use environment variables to propagate them between proceses, use pipes and not files for inter-process communication. This way I belive it can be as secure as the alternatives.

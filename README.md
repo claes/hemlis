@@ -76,16 +76,16 @@ The first command, source secrets.txt, is a bash builtin that will define enviro
 
 This works, but since the secrets are now present in your environment as environment variables, it is not secure. It is also a bad practise to store secrets in plain text files - but this was just for illustration. 
 
-Another way would be to create a script call secrets.sh containing
+Another way would be to create a script called secrets.sh containing
 
     #!/usr/bin/env bash
     home_wifi_password="Pa$sw0rd"
 
     source $(type hemlis-install)
 
-If you then execute secrets.sh, the secrets will be installed. In this case, the shell variable is defined within the shell process, and would not leak to the environment. It is however an ugly practise mix the definition of secrets with program code, and also here the secret would not be encrypted at rest. So neither this is how you should do it! 
+If you then execute secrets.sh, the secrets will be installed. In this case, the shell variable is defined within the shell process, so is not an environment variable and would not leak to the environment. It is however an ugly practise to mix the definition of secrets with program code, and also here the secret would not be encrypted at rest. So neither this is how you should do it! 
 
-To do it properly, we need to create a way to combine the secrets with the hemlis-install invocation dynamically, without leaking the secrets outside the installation process, and without storing the secrets unencrypted. 
+To do it properly, we need to create a way to combine encrypted secrets with the hemlis-install invocation dynamically, without leaking the secrets outside the installation process, and without storing the secrets unencrypted. 
 
 This can be done as follows:
 
@@ -99,13 +99,15 @@ You will then let pass decrypt the file when you want to install the secrets:
 
     (set -e; pass nixos-secrets && echo "source $(type hemlis-install)") | sudo bash -s
 
-This command will let pass decrypt your secrets, print them to standard out, and combine the output with a statement to source the hemlis-install script. The result will be a single script, that is very similar to the second example, that is piped to standard input of another bash process, that executes it. This way the secrets are not stored in plaintext and do not set in the environment. 
+This command will let pass decrypt your secrets, print them to standard out, and combine the output with a statement to source the hemlis-install script. The result will be a single script, that is very similar to the second example, that is piped to standard input of another bash process, that executes it. This way the secrets are not stored in plaintext and not set in the environment. 
 
 To deploy the secrets remotely, you can modfiy the command to run the installation part using ssh  
 
     (set -e; pass nixos-secrets && echo "source $(type hemlis-install)") | ssh remote-host sudo bash -s
 
-You can adapt this approach to fit you. If you don't use pass password management tool, you can use encryption tools such as gpg or age, or explore ways to use another password manager. Create a way to decrypt your secrets from rest, format them in the shell variable syntax, and combine them with hemlis-install. 
+You can adapt this approach to fit you. If you don't use the pass password management tool, you can use encryption tools such as gpg or age, or explore ways to use another password manager. There are many possible ways, and you can chose the one that works for you. 
+
+Create a way to decrypt your secrets from rest, format them in the shell variable syntax, and combine them with hemlis-install. 
 
 ## FAQ
 
@@ -130,9 +132,9 @@ You can set the secretsDir path as follows
 
 The hemlis approach decouples the lifecycle of secrets management from Nix. When you change a secret, Nix will not be aware of it, and can for example not restart the services that use the secret. 
 
-When you use agenix, change of a secret will be noticed by Nix so it will know to handle dependent components, but with hemlis, you need to take care of this yourself
+When you use agenix, change of a secret will be noticed by Nix so it will know to handle dependent components, but with hemlis, you need to take care of this yourself.
 
-This also means, that the first time you introduce a new secret, you will only have the updated hemlis-install script generated after activation. When services start up the first time, the new secrets is not yet installed.
+This also means, that the first time you introduce a new secret, you will only have the updated hemlis-install script generated after activation. When services start up the first time, the new secrets are not yet installed.
 
 You can either just install the secrets, and restart the dependent services. Or you can build the NixOS configuration, but not activate it. You run the new version of the hemlis-install script, and then activate the new generation. It could look like this:
 

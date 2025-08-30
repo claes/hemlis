@@ -23,6 +23,8 @@ The contents of this file could be for example
 
     HOME_WIFI_PASSWORD=Pa$sw0rd
 
+It is the Pa$sw0rd which is the secret. The other part is just a boilerplate, which is needed for this particular wifi use case. 
+
 To configure this using Hemlis, you define a secret hemlis.secrets.home_wifi like:
 
     hemlis.secrets.home_wifi = {
@@ -38,11 +40,13 @@ Then you refer to the the location  where this secret will be as below
       };
     };
 
-Nix will resolve config.hemlis.secrets.home_wifi.path to a string, such as "/persist/secrets/home_wifi". A string like this is what networking.wireless.secretsFile expect. 
+(You can ignore the networks."home_wifi" part, it is also just for this particular use case.)
 
-This part is actually quite similar to for example agenix. But it differs  how the secrets are defined:
+Nix will resolve config.hemlis.secrets.home_wifi.path to a string, such as "/persist/secrets/home_wifi". A string like this is what the networking.wireless.secretsFile option expect. 
 
-The contents of the file is defined by the value of shellExpr in the home_wifi attribute set value. This is a kind of template, where the part that looks like shell variable syntax will be replaced with the actual secret. 
+This part is actually quite similar to for example agenix. But it differs how the secrets are defined:
+
+The contents of the file is defined by the value of shellExpr in the home_wifi attribute set value. This is a kind of template, where the part that looks like shell variable syntax will be replaced with the actual secret, by hemlis. 
 
 If the $home_wifi_password is defined to Pa$sw0rd, then the result will be that the file contents will be 
 
@@ -52,9 +56,9 @@ But how do you provide the value for the secret securely? This is explained in t
 
 ## Defining and installing the secret
 
-When you build your NixOS configuration, hemlis will generate a bash script called hemlis-install, which knows how to deploy the hemlis secrets you have defined. You need to call this script  with your secrets, and it will install them to the location that will be used in the Nix config.
+When you build your NixOS configuration, hemlis will generate a bash script called hemlis-install, which knows how to deploy the hemlis secrets you have defined. You need to call this script with your secrets, and it will install them to the location that will be used in the Nix config. 
 
-The hemlis-install script works on secrets deined with shell variable syntax of the form secretname="secretvalue". When you execute the script, you should do it so those such variables are in scope for the script.
+The hemlis-install script works on secrets defined with shell variable syntax of the form secretname="secretvalue". When you execute the script, you should do it so such variables are in scope for the script.
 
 In the simplest case, which would not be secure, you can create a simple text file which defines your secrets.
 
@@ -67,7 +71,9 @@ If you would then execute
     source secrets.txt
     hemlis-install
 
-it will install them. This works, but since the secrets are now present in your environment as environment variables, it is very insecure. It is also a bad practise to store secrets in a plain text file - but this was just for illustration. 
+hemlis-install will match the home_wifi_password variablewith the $home_wifi_password string given in the shellExpr Nix option. The result will be a file containing HOME_WIFI_PASSWORD=Pa$sw0rd which config.hemlis.secrets.home_wifi.path will be referencing.
+
+This works, but since the secrets are now present in your environment as environment variables, it is very insecure. It is also a bad practise to store secrets in plain text files - but this was just for illustration. 
 
 Another way would be to create a script call secrets.sh containing
 
@@ -76,19 +82,23 @@ Another way would be to create a script call secrets.sh containing
 
     source $(type hemlis-install)
 
-If you then execute secrets.sh, the secrets will be installed. In this case, the shell variable is defined within the shell process, and would not leak to the environment. It is however an ugly practise mix the definition of secrets with program code, and also here the secret would not be encrypted at rest. So neither this is how you should do it! But getting closer. We need to create a way to combine the secrets with the hemlis-install invocation dynamically, without leaking the secrets outside the installation process. 
+If you then execute secrets.sh, the secrets will be installed. In this case, the shell variable is defined within the shell process, and would not leak to the environment. It is however an ugly practise mix the definition of secrets with program code, and also here the secret would not be encrypted at rest. So neither this is how you should do it! But getting closer. 
+
+We need to create a way to combine the secrets with the hemlis-install invocation dynamically, without leaking the secrets outside the installation process. 
 
 A good practise is as follows:
 
-Define the secrets using a password management tool. For example, using the pass password manager (https://www.passwordstore.org), you store the secret nixos-secrets with contents as  
+Define the secrets using a password management tool. For example, using the pass password manager (https://www.passwordstore.org), you can store the pass secret "nixos-secrets" with contents as  
 
     home_wifi_password="Pa$sw0rd"
+
+just like the contents of the plain text file in the first exaxmple. 
 
 You can then execute
 
     (set -e; pass nixos-secrets && echo "source $(type hemlis-install)") | sudo bash -s
 
-This command will let pass decrypt your secret, and combine the output with a statement to source the hemlis-install script. The result will be a script, that is very similar to the previous example, that is piped to standard input of another bash process that executes it. This way the secrets are not stored in plaintext and do not pollute the environment. 
+This command will let pass decrypt your secret, and combine the output with a statement to source the hemlis-install script. The result will be a script, that is very similar to the second example, that is piped to standard input of another bash process that executes it. This way the secrets are not stored in plaintext and do not pollute the environment. 
 
 To deploy the secrets remotely, you can modfiy the command to run the installation part using ssh  
 

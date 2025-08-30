@@ -47,7 +47,7 @@ Nix will resolve config.hemlis.secrets.home_wifi.path to a string, such as "/per
 
 This part is actually quite similar to for example agenix. But it differs how the secrets are defined:
 
-The contents of the file is defined by the value of template in the home_wifi attribute set value. This is a kind of template, where the part that looks like shell variable syntax will be replaced with the actual secret, by hemlis. 
+The contents of the file is defined by the value of the template option. The part that looks like shell variable syntax ($home_wifie_password) will be replaced with the actual secret. 
 
 If the $home_wifi_password is defined to be Pa$sw0rd, then the result will be that the file contents will be 
 
@@ -72,9 +72,9 @@ If you would then execute
     source secrets.txt
     hemlis-install
 
-hemlis-install will match the home_wifi_password variable with the $home_wifi_password expression given in the template Nix option. The result will be a file containing HOME_WIFI_PASSWORD=Pa$sw0rd which config.hemlis.secrets.home_wifi.path will be referencing.
+The first command, source secrets.txt, is a bash builtin that will define environment variables as stated in secrets.txt. hemlis-install will match the home_wifi_password environment variable with the $home_wifi_password expression given in the template Nix option. The result will be a file containing HOME_WIFI_PASSWORD=Pa$sw0rd which config.hemlis.secrets.home_wifi.path will be referencing.
 
-This works, but since the secrets are now present in your environment as environment variables, it is very insecure. It is also a bad practise to store secrets in plain text files - but this was just for illustration. 
+This works, but since the secrets are now present in your environment as environment variables, it is not secure. It is also a bad practise to store secrets in plain text files - but this was just for illustration. 
 
 Another way would be to create a script call secrets.sh containing
 
@@ -85,7 +85,7 @@ Another way would be to create a script call secrets.sh containing
 
 If you then execute secrets.sh, the secrets will be installed. In this case, the shell variable is defined within the shell process, and would not leak to the environment. It is however an ugly practise mix the definition of secrets with program code, and also here the secret would not be encrypted at rest. So neither this is how you should do it! 
 
-We need to create a way to combine the secrets with the hemlis-install invocation dynamically, without leaking the secrets outside the installation process, and without storing the secrets unencrypted. 
+To do it properly, we need to create a way to combine the secrets with the hemlis-install invocation dynamically, without leaking the secrets outside the installation process, and without storing the secrets unencrypted. 
 
 This can be done as follows:
 
@@ -99,7 +99,7 @@ You will then let pass decrypt the file when you want to install the secrets:
 
     (set -e; pass nixos-secrets && echo "source $(type hemlis-install)") | sudo bash -s
 
-This command will let pass decrypt your secrets, and combine the output with a statement to source the hemlis-install script. The result will be a script, that is very similar to the second example, that is piped to standard input of another bash process that executes it. This way the secrets are not stored in plaintext and do not pollute the environment. 
+This command will let pass decrypt your secrets, print them to standard out, and combine the output with a statement to source the hemlis-install script. The result will be a single script, that is very similar to the second example, that is piped to standard input of another bash process, that executes it. This way the secrets are not stored in plaintext and do not set in the environment. 
 
 To deploy the secrets remotely, you can modfiy the command to run the installation part using ssh  
 
@@ -126,7 +126,7 @@ You can set the secretsDir path as follows
     
     hemlis.secretsDir.path = "/my-secrets-dir";
 
-### What are the disadvantages with this approach compared with example agenix?
+### What are the disadvantages with this approach compared to for example agenix?
 
 The hemlis approach decouples the lifecycle of secrets management from Nix. When you change a secret, Nix will not be aware of it, and can for example not restart the services that use the secret. 
 
@@ -144,7 +144,7 @@ You can either just install the secrets, and restart the dependent services. Or 
 
 ### Is Hemlis secure?
 
-Hemlis is at its core just a way to copy data to files in locations as specified with Nix, but witout Nix being aware of them. With this I mean, the Nix interpreter will only handle strings. It will not know they represent paths to files, and it will therefore not copy files to the Nix store. The actual value of the secrets are never in play in the Nix config. This is otherwise a big risk for users new to Nix. 
+Hemlis is at its core just a way to copy data from shell variables to files in locations as specified with Nix, but witout Nix being aware of them as files. With this I mean, the Nix interpreter will only handle Hemlis file paths as strings. It will not know they represent paths to files, and it will therefore not copy files to the Nix store. The actual value of the secrets are never in play in the Nix config. This is otherwise a big risk for users new to Nix. 
 
 Hemlis does not apply any encryption itself. Since it is not a complete solution, just a building block, it can be used in secure or insecure ways.
 

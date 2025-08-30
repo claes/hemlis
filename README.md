@@ -6,7 +6,7 @@ It is not a turn-key solution, but a tool to copy secrets to designated location
 
 Popular Nix secrets solutions such as agenix and sopsnix requires you to manage your secrets using their designated file formats and encryption methods. They then store the secrets in the nix store in encrypted form, and decrypts them at the activation step.
 
-Hemlis leaves the secrets management part up to you - where you keep them, how you encrypt them - but helps you to copy them to the final location, and to reference them using Nix. You may find this a simpler approach, especially when you are new to Nix. The intent with this approach is that it should be simple to understand and adapt. 
+Hemlis leaves the encryption part up to you - where you keep them, how you encrypt them - but helps you to copy them to the final location, and to reference them using Nix. You may find this a simpler approach, especially when you are new to Nix. The intent with this approach is that it should be simple to understand and adapt. 
 
 # Example
 
@@ -50,7 +50,7 @@ But how do you provide the value for the secret securely? This is explained in t
 
 ## Defining and installing the secret
 
-When you build your NixOS configuration, hemlis will generate a bash script called hemlis-install, which knows how to deploy the hemlis secrets you have defined. You need to call this file with your secrets, and it will install them in the location defined in you Nix file
+When you build your NixOS configuration, hemlis will generate a bash script called hemlis-install, which knows how to deploy the hemlis secrets you have defined. You need to call this file with your secrets, and it will install them in the location defined in your Nix config.
 
 The hemlis-install script works on secrets deined with shell variable syntax of the form secretname="secretvalue". So when you execute the script, you should do it so those such variables are in scope for the script.
 
@@ -65,7 +65,7 @@ If you would then execute
     source secrets.txt
     hemlis-install
 
-It will install them. This works, but since the secrets are now present in your environment, it is not very secure. It is also a bad practise to store secrets in a plain text file - but this is just for illustration. 
+it will install them. This works, but since the secrets are now present in your environment as environment variables, it is very insecure. It is also a bad practise to store secrets in a plain text file - but this was just for illustration. 
 
 Another way would be to create a script call secrets.sh containing
 
@@ -129,10 +129,16 @@ You can either just install the secrets, and restart the dependent services. Or 
     (set -e; pass nixos-secrets && echo "source $($system_path//sw/bin/hemlis-install)") | sudo bash -s
 
 
-### Is hemlis secure?
+### Is Hemlis secure?
 
-Hemlis is at its core just a way to copy data to files in locations as specified with Nix. It does not apply any encryption itself. Since it is not a complete solution, it can be used in secure or insecure ways.
+Hemlis is at its core just a way to copy data to files in locations as specified with Nix, but witout Nix being "aware of them". With this I mean, the Nix interpreter will only handle strings. It will not know they represent paths to files, and it will therefore not copy files to the Nix store. The actual value of the secrets are never in play in the Nix config. 
 
-Used well, it can definitely be secure 
+Hemlis does not apply any encryption itself. Since it is not a complete solution, just a building block, it can be used in secure or insecure ways.
 
-Make sure you encrypt the secrets in their master location, don't use environment variables to propagate them between proceses, use pipes and not files for inter-process communication. This way I belive it can be as secure as the alternatives.
+Used well, it can definitely be secure.
+
+- Make sure you encrypt the secrets in their master location.
+- Don't use environment variables to propagate them between proceses
+- Use pipes and not files for inter-process communication. 
+
+This way I belive it can be as secure as the alternatives.
